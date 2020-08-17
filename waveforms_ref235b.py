@@ -32,9 +32,9 @@ def uvw2enz(st):
     aV = np.radians(15)
     aW = np.radians(255)
 
-    A = np.array([[np.cos(d)*np.sin(aU),np.cos(d)*np.cos(aU),np.sin(d)],
-                  [np.cos(d)*np.sin(aV), np.cos(d)*np.cos(aV), np.sin(d)],
-                  [np.cos(d)*np.sin(aW), np.cos(d)*np.cos(aW), np.sin(d)]])
+    A = np.array([[np.cos(d)*np.sin(aU),np.cos(d)*np.cos(aU),-np.sin(d)],
+                  [np.cos(d)*np.sin(aV), np.cos(d)*np.cos(aV), -np.sin(d)],
+                  [np.cos(d)*np.sin(aW), np.cos(d)*np.cos(aW), -np.sin(d)]])
 
     B = np.linalg.inv(A)
     E,N,Z = np.dot(B,(U,V,W))
@@ -64,8 +64,8 @@ def wfplot(st,axs,iax,scale=1,sh=0,Ptime=0):
         shift += dsh
     axs[iax][1].set_ylim(ylim)
     if iax == len(axs)-1:
-       axs[len(axs)-1][0].legend(loc='lower right')
-       axs[len(axs)-1][1].legend(loc='lower right')
+       axs[len(axs)-1][0].legend(loc='lower right', ncol=2, fontsize='x-small', title='Reference  vs   New Event', title_fontsize='x-small')
+       axs[len(axs)-1][1].legend(loc='lower right', ncol=2, fontsize='x-small', title='Reference  vs   New Event', title_fontsize='x-small')
 
 
 #    ax[row,column].plot(t, y, label='BHU', color = "#1f77b4", alpha = 0.7)
@@ -88,9 +88,70 @@ bpfilters = [
 # start figure
 nrows = len(bpfilters)+3
 fig, axs = plt.subplots(nrows, 2, figsize=(14,7))
-plt.subplots_adjust(left=0.03, right=0.97, bottom=0.03, top=0.97, hspace=0.3)
+for j in range(nrows):
+    axs[j][0].tick_params(labelsize=6)
+    axs[j][1].tick_params(labelsize=6)
+    axs[j][0].set_prop_cycle(color=['#3BA7BF', '#6297A3', '#898686', '#BF533B', '#D8802A', '#F0AC19'], alpha=[0.5,0.5,0.5,1.0,1.0,1.0])
+    axs[j][1].set_prop_cycle(color=['#3BA7BF', '#6297A3', '#898686', '#BF533B', '#D8802A', '#F0AC19'], alpha=[0.5,0.5,0.5,1.0,1.0,1.0])
+plt.subplots_adjust(left=0.03, right=0.97, bottom=0.03, top=0.97, hspace=0.7)
 iax = 0
 
+#--------plotting event S0235b as a reference-------
+
+e = 'Event S0235b'
+### 2019-07-26T12:16:15
+P235b = UTCDateTime('2019-07-26T12:19:19')
+S235b = UTCDateTime('2019-07-26T12:22:05')
+start235b = P235b - 1*60 # 1 minute early
+end235b = S235b + 3*(S235b-P235b)
+s0235b = waveforms(start235b, end235b, 600)
+
+shift = 1; scale = 2
+
+# plot raw data
+stmp = s0235b.slice(starttime=start235b,endtime=end235b)
+#time_axis = np.arange(start235b-P235b,end235b-P235b+dt,dt)
+wfplot(stmp,axs,iax,scale,shift,P235b)
+for i in [0,1]:
+    axs[iax][i].set_title('Raw Data')
+iax += 1
+
+# plot high-passed data
+stmp = s0235b.copy()
+stmp.taper(0.01,max_length=1)
+stmp.filter('highpass',freq=bpfilters[0][1], corners=4, zerophase=True)
+stm = stmp.slice(starttime=start235b,endtime=end235b)
+#time_axis = np.arange(start235b-P235b,end235b-P235b+dt,dt)
+wfplot(stm,axs,iax,scale,shift,P235b)
+for i in [0,1]:
+    axs[iax][i].set_title('High-Passed Data: 2-8Hz')
+iax += 1
+
+# plot band-passed data
+for f in bpfilters:
+    stmp = s0235b.copy()
+    stmp.taper(0.01,max_length=1)
+    stmp.filter('bandpass',freqmin=f[0], freqmax=f[1],corners=4, zerophase=True)
+    stm = stmp.slice(starttime=start235b,endtime=end235b)
+    #time_axis = np.arange(start235b-P235b,end235b-P235b+dt,dt)
+    wfplot(stm,axs,iax,scale,shift,P235b)
+    for i in [0,1]:
+        axs[iax][i].set_title('Band-Passed Data: ' + str(f[0]) + '-' + str(f[1]) + 'Hz')
+    iax += 1
+
+# plot low-passed data
+stmp = s0235b.copy()
+stmp.taper(0.01,max_length=1)
+stmp.filter('lowpass',freq=bpfilters[-1][0], corners=4, zerophase=True)
+stm = stmp.slice(starttime=start235b,endtime=end235b)
+#time_axis = np.arange(start235b-P235b,end235b-P235b+dt,dt)
+wfplot(stm,axs,iax,scale,shift,P235b)
+for i in [0,1]:
+    axs[iax][i].set_title('Low-Passed Data: 0.03-0.125Hz')
+
+iax = 0
+
+#-----plotting choosen event------
 
 #Ptmp = UTCDateTime('2019-08-15T03:08:04') + 1*60
 #Stmp = UTCDateTime('2019-08-15T03:08:04') + (start235b - S235b)
@@ -99,7 +160,7 @@ iax = 0
 #Ptmp = UTCDateTime('2019-06-09T05:40:05')
 #Stmp = UTCDateTime('2019-06-09T05:43:19')
 
-e2 = '325a'
+#e2 = '325a'
 Ptmp = UTCDateTime('2019-10-26T06:58:58')
 Stmp = UTCDateTime('2019-10-26T07:02:56')
 
@@ -115,19 +176,36 @@ Stmp = UTCDateTime('2019-10-26T07:02:56')
 #Ptmp = UTCDateTime('2019-04-12T18:14:35')
 #Stmp = UTCDateTime('2019-04-12T18:17:55')
 
+#e6 = '474a'
+#Ptmp = UTCDateTime('2020-03-28T00:35:20')
+#Stmp = UTCDateTime('2020-03-28T00:37:58')
+
+#e7 = '405c'
+#Ptmp = UTCDateTime('2020-01-07T01:41:43')
+#Stmp = UTCDateTime('2020-01-07T01:45:39')
+
+#user entered P/S wave estimates
+#P_start = input('Estimated arrival time of P-wave: ')
+#Ptmp = UTCDateTime(P_start)
+#S_start = input('Estimated arrival time of S-wave: ')
+#Stmp = UTCDateTime(S_start)
+
+
 # Set times and get data:
-e = 'Event S0' + e2
-### 2019-05-23T02:19:33
 P173a = Ptmp
 S173a = Stmp
 start173a = P173a - 1*60 # 1 minute early
 end173a = S173a + 3*(S173a-P173a)
 s0173a = waveforms(start173a, end173a, 600)
 
+# get event name
+e_input = input('Event Name: ')
+e = e_input
+
 sps = s0173a[0].stats.sampling_rate; dt = 1./sps
 if 2*bpfilters[0][1] > sps:
     print('WARNING: high bandpass corner too high. f_nyq = ',0.5*sps,' Hz')
-shift = 0; scale = 2
+shift = 0; scale = 10
 
 # plot raw data
 stmp = s0173a.slice(starttime=start173a,endtime=end173a)
@@ -164,67 +242,24 @@ wfplot(stm,axs,iax,scale,shift,P173a)
 
 iax = 0
 
-
-#--------plotting event S0235b as a reference-------
-
-e = 'Event S0235b'
-### 2019-07-26T12:16:15
-P235b = UTCDateTime('2019-07-26T12:19:19')
-S235b = UTCDateTime('2019-07-26T12:22:05')
-start235b = P235b - 1*60 # 1 minute early
-end235b = S235b + 3*(S235b-P235b)
-s0235b = waveforms(start235b, end235b, 600)
-
-shift = 1; scale = 2
-
-# plot raw data
-stmp = s0235b.slice(starttime=start235b,endtime=end235b)
-#time_axis = np.arange(start235b-P235b,end235b-P235b+dt,dt)
-wfplot(stmp,axs,iax,scale,shift,P235b)
-iax += 1
-
-# plot high-passed data
-stmp = s0235b.copy()
-stmp.taper(0.01,max_length=1)
-stmp.filter('highpass',freq=bpfilters[0][1], corners=4, zerophase=True)
-stm = stmp.slice(starttime=start235b,endtime=end235b)
-#time_axis = np.arange(start235b-P235b,end235b-P235b+dt,dt)
-wfplot(stm,axs,iax,scale,shift,P235b)
-iax += 1
-
-# plot band-passed data
-for f in bpfilters:
-    stmp = s0235b.copy()
-    stmp.taper(0.01,max_length=1)
-    stmp.filter('bandpass',freqmin=f[0], freqmax=f[1],corners=4, zerophase=True)
-    stm = stmp.slice(starttime=start235b,endtime=end235b)
-    #time_axis = np.arange(start235b-P235b,end235b-P235b+dt,dt)
-    wfplot(stm,axs,iax,scale,shift,P235b)
-    iax += 1
-
-# plot low-passed data
-stmp = s0235b.copy()
-stmp.taper(0.01,max_length=1)
-stmp.filter('lowpass',freq=bpfilters[-1][0], corners=4, zerophase=True)
-stm = stmp.slice(starttime=start235b,endtime=end235b)
-#time_axis = np.arange(start235b-P235b,end235b-P235b+dt,dt)
-wfplot(stm,axs,iax,scale,shift,P235b)
-
-fig.savefig('TwoQuakes.png')
+fig.savefig('TwoQuakes' + e + '.png')
 plt.show()
 
 
 # ....plot particle motion...
-e = 'Event S0' + e2
+e = e_input
 stmp = s0173a.copy()
 stmp.taper(0.01,max_length=1)
 stmp.filter('bandpass',freqmin=0.125, freqmax=1.0 ,corners=4, zerophase=True)
 #bt = - 4; et = 12
-bt = - 4; et = 8
+bt = - 4; et = 4
 #bt = 8; et = 12
 
 fjg, ays = plt.subplots(2,3,figsize=(10,7))
-plt.subplots_adjust(left=0.05, right=0.95, bottom=0.05, top=0.95, hspace=0.5)
+for i in range(2):
+    for j in range(3):
+        ays[i][j].tick_params(labelsize=6)
+plt.subplots_adjust(left=0.05, right=0.95, bottom=0.05, top=0.95, wspace = 0.3, hspace=0.2)
 
 stm = stmp.slice(starttime=P173a+bt,endtime=P173a+et)
 sENZ = uvw2enz(stm)
@@ -233,36 +268,24 @@ tvec = sENZ[0].times(reftime=P173a)
 x = sENZ.select(component='N')[0].data
 y = sENZ.select(component='Z')[0].data
 ays[0][0].scatter(x,y,c=tvec)
-#--original limits--
-#ays[0][0].set_ylim([-500,500]); ays[0][0].set_xlim([-500,500]); ays[0][0].set_xlabel('North'); ays[0][0].set_ylabel('Up')
-
-#--325a limits---
-ays[0][0].set_ylim([-200,200]); ays[0][0].set_xlim([-200,200]); ays[0][0].set_xlabel('North'); ays[0][0].set_ylabel('Up')
+ays[0][0].set_ylim([-200,200]); ays[0][0].set_xlim([-200,200]); ays[0][0].set_xlabel('<- South - North ->'); ays[0][0].set_ylabel('<-Down - Up ->')
 ays[0][0].set_aspect('equal'); ays[0][0].set_title(e+' P-wave Particle Motion')
 
 x = sENZ.select(component='E')[0].data
 y = sENZ.select(component='Z')[0].data
 ays[0][1].scatter(x,y,c=tvec)
-#---original limits---
-#ays[0][1].set_ylim([-500,500]); ays[0][1].set_xlim([-500,500]); ays[0][1].set_xlabel('East'); ays[0][1].set_ylabel('Up')
-
-#--325a limits---
 ays[0][1].set_ylim([-200,200]); ays[0][1].set_xlim([-200,200]); ays[0][1].set_xlabel('East'); ays[0][1].set_ylabel('Up')
 ays[0][1].set_aspect('equal')
 
 x = sENZ.select(component='E')[0].data
 y = sENZ.select(component='N')[0].data
 ays[0][2].scatter(x,y,c=tvec)
-#---original limits---
-#ays[0][2].set_ylim([-500,500]); ays[0][2].set_xlim([-500,500]); ays[0][2].set_xlabel('East'); ays[0][2].set_ylabel('North')
-
-#---325a limits---
 ays[0][2].set_ylim([-200,200]); ays[0][2].set_xlim([-200,200]); ays[0][2].set_xlabel('East'); ays[0][2].set_ylabel('North')
 ays[0][2].set_aspect('equal')
 
 
 #bt = 172; et = 188
-bt = 172; et = 178
+bt = 238; et = 246
 #bt = 178; et = 188
 
 stm = stmp.slice(starttime = P173a+bt, endtime = P173a+et)
@@ -287,7 +310,8 @@ ays[1][2].scatter(x,y,c=tvec)
 ays[1][2].set_ylim([-500,500]); ays[1][2].set_xlim([-500,500]); ays[1][2].set_xlabel('East'); ays[1][2].set_ylabel('North')
 ays[1][2].set_aspect('equal')
 
-fjg.savefig('ppm' + e2 + '.png')
+#fjg.savefig('ppm' + e + '.png')
+fjg.savefig('ppm' + e + '.png')
 plt.show()
 
 # --------particle motion plot of S0235b/reference event-------------------------
@@ -301,7 +325,10 @@ bt = - 4; et = 8
 #bt = 8; et = 12
 
 fkg, azs = plt.subplots(2,3,figsize=(10,7))
-plt.subplots_adjust(left=0.05, right=0.95, bottom=0.05, top=0.95, hspace=0.5)
+for i in range(2):
+    for j in range(3):
+        azs[i][j].tick_params(labelsize=6)
+plt.subplots_adjust(left=0.05, right=0.95, bottom=0.05, top=0.95, wspace = 0.3, hspace=0.2)
 
 stm = stmp.slice(starttime=P235b+bt,endtime=P235b+et)
 sENZ = uvw2enz(stm)

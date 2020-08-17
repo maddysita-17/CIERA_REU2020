@@ -99,9 +99,9 @@ def xyz_plotter(date, filtered, event, ax, ylim = False, channels=[0,1,2]):
     aV = np.radians(15)
     aW = np.radians(255)
 
-    A = np.array([[np.cos(d)*np.sin(aU),np.cos(d)*np.cos(aU),np.sin(d)],
-    [np.cos(d)*np.sin(aV), np.cos(d)*np.cos(aV), np.sin(d)],
-    [np.cos(d)*np.sin(aW), np.cos(d)*np.cos(aW), np.sin(d)]])
+    A = np.array([[np.cos(d)*np.sin(aU),np.cos(d)*np.cos(aU),-np.sin(d)],
+    [np.cos(d)*np.sin(aV), np.cos(d)*np.cos(aV), -np.sin(d)],
+    [np.cos(d)*np.sin(aW), np.cos(d)*np.cos(aW), -np.sin(d)]])
 
     B = np.linalg.inv(A)
 
@@ -179,31 +179,42 @@ ax2.axvline(pd.to_datetime(P235b), c='g', ls='--', alpha = 0.5)
 ax2.axvline(pd.to_datetime(S235b), c='b', ls='--', alpha = 0.5)
 ax2.legend()
 
+plt.show()
 
-st = sf173a.copy()
-tframe = st.slice(starttime=UTCDateTime('2019-05-23T02:22:55'), endtime=UTCDateTime('2019-05-23T02:24:55'))
-time = tframe[0].times('UTCDateTime')
-print(time[0], tframe[0].data[0])
+#------------------------------------------------------------
+
+#at this point either sf173a or sf235b
+event_stream = input('Desired event: ')
+if event_stream == 'sf173a':
+    st = sf173a.copy()
+elif event_stream == 'sf235b':
+    st = sf235b.copy()
 
 for channel in [0,1,2]:
-    full_code = tframe[channel].id
+    full_code = st[channel].id
     code = full_code[12:]
 
     if code == 'BHU':
-        U = tframe[channel].data
+        U = st[channel].data
     elif code == 'BHV':
-        V = tframe[channel].data
+        V = st[channel].data
     elif code == 'BHW':
-        W = tframe[channel].data
+        W = st[channel].data
 
 d = np.radians(-30)
 aU = np.radians(135)
 aV = np.radians(15)
 aW = np.radians(255)
 
-A = np.array([[np.cos(d)*np.sin(aU),np.cos(d)*np.cos(aU),np.sin(d)],
-[np.cos(d)*np.sin(aV), np.cos(d)*np.cos(aV), np.sin(d)],
-[np.cos(d)*np.sin(aW), np.cos(d)*np.cos(aW), np.sin(d)]])
+dU = np.radians(-29.4)
+dV = np.radians(-29.2)
+dW = np.radians(-29.7)
+
+#updated A matrix
+A = np.array([[np.cos(d)*np.sin(aU),np.cos(d)*np.cos(aU),-np.sin(d)],
+              [np.cos(d)*np.sin(aV), np.cos(d)*np.cos(aV), -np.sin(d)],
+              [np.cos(d)*np.sin(aW), np.cos(d)*np.cos(aW), -np.sin(d)]])
+
 
 B = np.linalg.inv(A)
 
@@ -215,8 +226,9 @@ def find_nearest(array, time):
     closest_element = array[smallest_difference_index]
     return closest_element
 
-P_start = input('Estimated arrival time of P-wave:')
+P_start = input('Estimated arrival time of P-wave: ')
 P_UTC = UTCDateTime(P_start)
+time = st[0].times('UTCDateTime')
 P_index = np.where(time == find_nearest(time, P_UTC))
 index_val = P_index[0].item()
 
@@ -228,17 +240,24 @@ print(E_amp, N_amp, Z_amp)
 theta_rad = np.arctan(E_amp/N_amp)
 theta = np.degrees(theta_rad)
 if Z_amp * N_amp < 0:
-    theta = theta + 180
-print('The back azimuth angle is: ', theta, ' degrees')
+    rot_theta = theta + 180
+    print('The back azimuth angle is: ', rot_theta, ' degrees')
+else:
+    print('The back azimuth angle is: ', theta, ' degrees')
 #theta should be around 91 degrees as reported by Nature paper: Constraints on...
 #this code returns 114 degrees
 
 Vs = 3.0 #km/s
 Vp = math.sqrt(3) * Vs #km/s
-dist = (UTCDateTime(S173a) - UTCDateTime(P173a)) * (Vp*Vs)/(Vp-Vs)
-print('The distance is: ',  dist, ' km')
+
+if event_stream == 'sf173a':
+    dist = (UTCDateTime(S173a) - UTCDateTime(P173a)) * (Vp*Vs)/(Vp-Vs)
+    print('The distance is: ',  dist, ' km')
+elif event_stream == 'sf235b':
+    dist = (UTCDateTime(S235b) - UTCDateTime(P235b)) * (Vp*Vs)/(Vp-Vs)
+    print('The distance is: ',  dist, ' km')
 #the distance as reported by insight is 29 degrees
 #this code returns 21 degrees
 
 #fig.savefig('origin_trial.png')
-plt.show()
+#plt.show()
